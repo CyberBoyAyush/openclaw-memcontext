@@ -1,0 +1,94 @@
+{
+  "id": "openclaw-memcontext",
+  "name": "MemContext",
+  "description": "Hosted long-term memory for OpenClaw backed by MemContext.",
+  "version": "0.1.0",
+  "kind": "memory",
+  "skills": ["./skills"],
+  "uiHints": {
+    "apiKey": {
+      "label": "MemContext API Key",
+      "sensitive": true,
+      "placeholder": "mc_...",
+      "help": "Your MemContext API key from app.memcontext.in (or use ${MEMCONTEXT_OPENCLAW_API_KEY})."
+    },
+    "apiUrl": {
+      "label": "MemContext API URL",
+      "placeholder": "https://api.memcontext.in",
+      "help": "Hosted MemContext API base URL.",
+      "advanced": true
+    },
+    "project": {
+      "label": "Project Scope",
+      "placeholder": "memcontext",
+      "help": "Optional fixed MemContext project scope. Leave empty to derive from the workspace.",
+      "advanced": true
+    },
+    "projectStrategy": {
+      "label": "Project Strategy",
+      "help": "How the plugin picks the MemContext project scope.",
+      "advanced": true
+    },
+    "autoRecall": {
+      "label": "Auto Recall",
+      "help": "Search MemContext before each user turn and inject relevant memories."
+    },
+    "autoCapture": {
+      "label": "Auto Capture",
+      "help": "Opt-in: save filtered durable user and project facts after successful turns.",
+      "advanced": true
+    },
+    "maxRecallResults": {
+      "label": "Max Recall Results",
+      "placeholder": "5",
+      "help": "Maximum memories injected into prompt context per turn.",
+      "advanced": true
+    },
+    "flushOnReset": {
+      "label": "Flush On Reset",
+      "help": "Opt-in: persist a filtered summary before session reset.",
+      "advanced": true
+    },
+    "flushOnCompaction": {
+      "label": "Flush On Compaction",
+      "help": "Opt-in: persist a filtered summary before compaction.",
+      "advanced": true
+    },
+    "requestTimeoutMs": {
+      "label": "Request Timeout",
+      "placeholder": "8000",
+      "help": "HTTP timeout in milliseconds for MemContext API calls.",
+      "advanced": true
+    },
+    "debug": {
+      "label": "Debug Logging",
+      "help": "Enable verbose logs for plugin actions and API calls.",
+      "advanced": true
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "apiKey": { "type": "string" },
+      "apiUrl": { "type": "string" },
+      "project": { "type": "string" },
+      "projectStrategy": {
+        "type": "string",
+        "enum": ["workspace", "config", "none"]
+      },
+      "autoRecall": { "type": "boolean" },
+      "autoCapture": { "type": "boolean" },
+      "maxRecallResults": { "type": "number", "minimum": 1, "maximum": 10 },
+      "flushOnReset": { "type": "boolean" },
+      "flushOnCompaction": { "type": "boolean" },
+      "requestTimeoutMs": {
+        "type": "number",
+        "minimum": 1000,
+        "maximum": 30000
+      },
+      "debug": { "type": "boolean" }
+    },
+    "required": []
+  }
+}

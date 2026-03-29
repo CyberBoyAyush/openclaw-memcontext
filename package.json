@@ -1,0 +1,39 @@
+{
+  "name": "@memcontext/openclaw-plugin",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "OpenClaw memory plugin backed by MemContext",
+  "license": "MIT",
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "0.34.47"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.1.29"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.18",
+    "openclaw": "2026.3.11",
+    "typescript": "^5.9.3"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "install": {
+      "npmSpec": "@memcontext/openclaw-plugin",
+      "defaultChoice": true
+    },
+    "compat": {
+      "pluginApi": ">=2026.3.11",
+      "minGatewayVersion": "2026.3.11"
+    },
+    "build": {
+      "openclawVersion": "2026.3.11",
+      "pluginSdkVersion": "2026.3.11"
+    }
+  },
+  "packageManager": "pnpm@9.0.0"
+}
