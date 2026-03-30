@@ -36,17 +36,18 @@ export function registerSearchTool(
       }),
       async execute(_toolCallId: string, params: SearchParams) {
         try {
-          const memories = await client.searchMemories({
+          const outcome = await client.searchMemoriesWithFallback({
             query: params.query,
             limit: params.limit ?? config.maxRecallResults,
             project:
               params.project ?? resolveMemoryProject(config, getWorkspaceDir()),
           });
+          const memories = outcome.memories;
 
           if (memories.length === 0) {
             return {
               content: [{ type: "text", text: "No relevant memories found." }],
-              details: { count: 0, memories: [] },
+              details: { count: 0, memories: [], scope: outcome.scope },
             };
           }
 
@@ -73,6 +74,7 @@ export function registerSearchTool(
             details: {
               count: memories.length,
               memories,
+              scope: outcome.scope,
             },
           };
         } catch (error) {

@@ -53,6 +53,13 @@ type SearchMemoryInput = {
   project?: string;
 };
 
+export type MemorySearchScope = "project" | "global" | "project_fallback";
+
+export type MemorySearchOutcome = {
+  memories: MemorySearchResult[];
+  scope: MemorySearchScope;
+};
+
 async function parseError(response: Response): Promise<string> {
   try {
     const body = (await response.json()) as ApiError;
@@ -147,5 +154,32 @@ export class MemContextClient {
 
     const payload = (await response.json()) as SearchMemoryResponse;
     return payload.memories;
+  }
+
+  async searchMemoriesWithFallback(
+    input: SearchMemoryInput,
+  ): Promise<MemorySearchOutcome> {
+    const project = input.project?.trim();
+    const normalizedInput = { ...input, project };
+
+    if (!project) {
+      const memories = await this.searchMemories(normalizedInput);
+      return { memories, scope: "global" };
+    }
+
+    const projectMemories = await this.searchMemories(normalizedInput);
+    if (projectMemories.length > 0) {
+      return { memories: projectMemories, scope: "project" };
+    }
+
+    const globalMemories = await this.searchMemories({
+      ...input,
+      project: undefined,
+    });
+
+    return {
+      memories: globalMemories,
+      scope: "project_fallback",
+    };
   }
 }

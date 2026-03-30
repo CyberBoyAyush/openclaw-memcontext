@@ -3,7 +3,12 @@ import os from "node:os";
 import path from "node:path";
 import readline from "node:readline";
 import type { MemContextClient } from "../client.ts";
-import { DEFAULT_API_URL, PLUGIN_ID } from "../config.ts";
+import {
+  DEFAULT_API_URL,
+  PLUGIN_ID,
+  type MemContextPluginConfig,
+} from "../config.ts";
+import { resolveMemoryProject } from "../lib/memory.ts";
 
 type CommandLike = {
   command(name: string): CommandLike;
@@ -105,6 +110,8 @@ async function prompt(question: string, hidden = false): Promise<string> {
 export function registerCliCommands(
   api: import("openclaw/plugin-sdk/core").OpenClawPluginApi,
   client?: MemContextClient,
+  config?: MemContextPluginConfig,
+  getWorkspaceDir?: () => string | undefined,
 ): void {
   api.registerCli(
     ({ program }) => {
@@ -242,13 +249,22 @@ export function registerCliCommands(
             return;
           }
 
-          const results = await client.searchMemories({ query, limit: 5 });
-          if (results.length === 0) {
+          const project =
+            config && getWorkspaceDir
+              ? resolveMemoryProject(config, getWorkspaceDir())
+              : undefined;
+
+          const results = await client.searchMemoriesWithFallback({
+            query,
+            limit: 5,
+            project,
+          });
+          if (results.memories.length === 0) {
             console.log("No memories found.");
             return;
           }
 
-          for (const [index, result] of results.entries()) {
+          for (const [index, result] of results.memories.entries()) {
             console.log(`${index + 1}. ${result.content}`);
           }
         });

@@ -83,11 +83,12 @@ export function registerCommands(
       }
 
       try {
-        const memories = await client.searchMemories({
+        const outcome = await client.searchMemoriesWithFallback({
           query,
           limit: config.maxRecallResults,
           project: resolveMemoryProject(config, getWorkspaceDir()),
         });
+        const memories = outcome.memories;
 
         if (memories.length === 0) {
           return { text: `No memories found for: ${query}` };
