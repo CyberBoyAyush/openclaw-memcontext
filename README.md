@@ -38,14 +38,14 @@ openclaw gateway restart
 ### Published package
 
 ```bash
-openclaw plugins install @memcontext/openclaw-plugin
+openclaw plugins install openclaw-memcontext
 openclaw gateway restart
 ```
 
 You can also force npm resolution explicitly:
 
 ```bash
-openclaw plugins install npm:@memcontext/openclaw-plugin
+openclaw plugins install npm:openclaw-memcontext
 ```
 
 ## Configure

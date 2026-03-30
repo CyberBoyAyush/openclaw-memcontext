@@ -1,5 +1,5 @@
 {
-  "name": "@memcontext/openclaw-plugin",
+  "name": "openclaw-memcontext",
   "version": "0.1.0",
   "type": "module",
   "description": "OpenClaw memory plugin backed by MemContext",
@@ -23,7 +23,7 @@
       "./index.ts"
     ],
     "install": {
-      "npmSpec": "@memcontext/openclaw-plugin",
+      "npmSpec": "openclaw-memcontext",
       "defaultChoice": true
     },
     "compat": {
