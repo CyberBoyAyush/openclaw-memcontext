@@ -70,13 +70,12 @@ export function buildRecallHandler(
     const project = resolveMemoryProject(config, getWorkspaceDir());
 
     try {
-      const memories = dedupeMemories(
-        await client.searchMemories({
-          query: event.prompt,
-          limit: config.maxRecallResults,
-          project,
-        }),
-      );
+      const outcome = await client.searchMemoriesWithFallback({
+        query: event.prompt,
+        limit: config.maxRecallResults,
+        project,
+      });
+      const memories = dedupeMemories(outcome.memories);
 
       if (memories.length === 0) {
         return;
@@ -84,7 +83,7 @@ export function buildRecallHandler(
 
       const context = buildRecallContext(memories);
 
-      log.debug(`recalled ${memories.length} memories`);
+      log.debug(`recalled ${memories.length} memories (${outcome.scope})`);
       return { prependContext: context };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

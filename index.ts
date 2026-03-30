@@ -53,7 +53,7 @@ const plugin = {
     registerSearchTool(api, client, config, getWorkspaceDir);
     registerStoreTool(api, client, config, getWorkspaceDir);
     registerCommands(api, client, config, getWorkspaceDir);
-    registerCliCommands(api, client);
+    registerCliCommands(api, client, config, getWorkspaceDir);
 
     if (config.autoRecall) {
       const recall = buildRecallHandler(client, config, getWorkspaceDir);
