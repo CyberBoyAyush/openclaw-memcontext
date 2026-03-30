@@ -41,7 +41,7 @@ export function registerSearchTool(
             query: params.query,
             limit: params.limit ?? config.maxRecallResults,
             project:
-              explicitProject ??
+              explicitProject ||
               resolveMemoryProject(config, getWorkspaceDir()),
           });
           const memories = outcome.memories;
