@@ -53,6 +53,10 @@ type SearchMemoryInput = {
   project?: string;
 };
 
+type SearchMemoryWithFallbackInput = SearchMemoryInput & {
+  fallbackToGlobal?: boolean;
+};
+
 export type MemorySearchScope = "project" | "global" | "project_fallback";
 
 export type MemorySearchOutcome = {
@@ -157,10 +161,12 @@ export class MemContextClient {
   }
 
   async searchMemoriesWithFallback(
-    input: SearchMemoryInput,
+    input: SearchMemoryWithFallbackInput,
   ): Promise<MemorySearchOutcome> {
-    const project = input.project?.trim();
-    const normalizedInput = { ...input, project };
+    const { fallbackToGlobal: fallbackOverride, ...searchInput } = input;
+    const project = searchInput.project?.trim();
+    const normalizedInput = { ...searchInput, project };
+    const fallbackToGlobal = fallbackOverride !== false;
 
     if (!project) {
       const memories = await this.searchMemories(normalizedInput);
@@ -172,8 +178,12 @@ export class MemContextClient {
       return { memories: projectMemories, scope: "project" };
     }
 
+    if (!fallbackToGlobal) {
+      return { memories: [], scope: "project" };
+    }
+
     const globalMemories = await this.searchMemories({
-      ...input,
+      ...searchInput,
       project: undefined,
     });
 

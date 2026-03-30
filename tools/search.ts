@@ -36,11 +36,13 @@ export function registerSearchTool(
       }),
       async execute(_toolCallId: string, params: SearchParams) {
         try {
+          const explicitProject = params.project?.trim();
           const outcome = await client.searchMemoriesWithFallback({
             query: params.query,
             limit: params.limit ?? config.maxRecallResults,
             project:
-              params.project ?? resolveMemoryProject(config, getWorkspaceDir()),
+              explicitProject ??
+              resolveMemoryProject(config, getWorkspaceDir()),
           });
           const memories = outcome.memories;
 
