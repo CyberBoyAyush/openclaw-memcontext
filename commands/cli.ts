@@ -16,9 +16,22 @@ type CommandLike = {
   action(handler: () => void | Promise<void>): CommandLike;
 };
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function requirePlainRecord(
+  value: unknown,
+  label: string,
+): Record<string, unknown> | undefined {
+  if (value === undefined) return undefined;
+  if (isPlainRecord(value)) return value;
+  throw new Error(`Invalid OpenClaw config: ${label} must be an object.`);
+}
+
 function isCommandLike(value: unknown): value is CommandLike {
-  if (typeof value !== "object" || value === null) return false;
-  const record = value as Record<string, unknown>;
+  if (!isPlainRecord(value)) return false;
+  const record = value;
   return (
     typeof record.command === "function" &&
     typeof record.description === "function" &&
@@ -147,13 +160,24 @@ export function registerCliCommands(
             );
             return;
           }
-          const plugins =
-            (openClawConfig.plugins as Record<string, unknown> | undefined) ??
-            {};
-          const entries =
-            (plugins.entries as Record<string, unknown> | undefined) ?? {};
-          const slots =
-            (plugins.slots as Record<string, unknown> | undefined) ?? {};
+          let plugins: Record<string, unknown>;
+          let entries: Record<string, unknown>;
+          let slots: Record<string, unknown>;
+          try {
+            plugins =
+              requirePlainRecord(openClawConfig.plugins, "plugins") ?? {};
+            entries =
+              requirePlainRecord(plugins.entries, "plugins.entries") ?? {};
+            slots = requirePlainRecord(plugins.slots, "plugins.slots") ?? {};
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : String(error);
+            console.log(message);
+            console.log(
+              "Refusing to overwrite an invalid OpenClaw config structure.",
+            );
+            return;
+          }
           const currentMemorySlot =
             typeof slots.memory === "string" ? slots.memory : undefined;
 
@@ -176,17 +200,8 @@ export function registerCliCommands(
 
           const existingEntry = entries[PLUGIN_ID];
           const existingConfig =
-            existingEntry &&
-            typeof existingEntry === "object" &&
-            !Array.isArray(existingEntry) &&
-            typeof (existingEntry as Record<string, unknown>).config ===
-              "object" &&
-            (existingEntry as Record<string, unknown>).config !== null &&
-            !Array.isArray((existingEntry as Record<string, unknown>).config)
-              ? ((existingEntry as Record<string, unknown>).config as Record<
-                  string,
-                  unknown
-                >)
+            isPlainRecord(existingEntry) && isPlainRecord(existingEntry.config)
+              ? existingEntry.config
               : undefined;
           const existingAutoRecall =
             existingConfig && typeof existingConfig.autoRecall === "boolean"
