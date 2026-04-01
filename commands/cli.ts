@@ -16,9 +16,22 @@ type CommandLike = {
   action(handler: () => void | Promise<void>): CommandLike;
 };
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function requirePlainRecord(
+  value: unknown,
+  label: string,
+): Record<string, unknown> | undefined {
+  if (value === undefined) return undefined;
+  if (isPlainRecord(value)) return value;
+  throw new Error(`Invalid OpenClaw config: ${label} must be an object.`);
+}
+
 function isCommandLike(value: unknown): value is CommandLike {
-  if (typeof value !== "object" || value === null) return false;
-  const record = value as Record<string, unknown>;
+  if (!isPlainRecord(value)) return false;
+  const record = value;
   return (
     typeof record.command === "function" &&
     typeof record.description === "function" &&
@@ -107,6 +120,14 @@ async function prompt(question: string, hidden = false): Promise<string> {
   return answer;
 }
 
+function parseBooleanAnswer(value: string, defaultValue: boolean): boolean {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return defaultValue;
+  if (["y", "yes", "true", "1"].includes(normalized)) return true;
+  if (["n", "no", "false", "0"].includes(normalized)) return false;
+  return defaultValue;
+}
+
 export function registerCliCommands(
   api: import("openclaw/plugin-sdk/core").OpenClawPluginApi,
   client?: MemContextClient,
@@ -127,24 +148,9 @@ export function registerCliCommands(
         .command("setup")
         .description("Configure the MemContext OpenClaw plugin")
         .action(async () => {
-          const apiKey = (
-            await prompt("MemContext API key (mc_...): ", true)
-          ).trim();
-          if (!apiKey) {
-            console.log("No API key provided. Setup cancelled.");
-            return;
-          }
-
-          const apiUrlInput = (
-            await prompt(`MemContext API URL [${DEFAULT_API_URL}]: `)
-          ).trim();
-          const projectInput = (
-            await prompt("Project scope (optional): ")
-          ).trim();
-
-          let config: Record<string, unknown>;
+          let openClawConfig: Record<string, unknown>;
           try {
-            config = readOpenClawConfig();
+            openClawConfig = readOpenClawConfig();
           } catch (error) {
             const message =
               error instanceof Error ? error.message : String(error);
@@ -154,12 +160,24 @@ export function registerCliCommands(
             );
             return;
           }
-          const plugins =
-            (config.plugins as Record<string, unknown> | undefined) ?? {};
-          const entries =
-            (plugins.entries as Record<string, unknown> | undefined) ?? {};
-          const slots =
-            (plugins.slots as Record<string, unknown> | undefined) ?? {};
+          let plugins: Record<string, unknown>;
+          let entries: Record<string, unknown>;
+          let slots: Record<string, unknown>;
+          try {
+            plugins =
+              requirePlainRecord(openClawConfig.plugins, "plugins") ?? {};
+            entries =
+              requirePlainRecord(plugins.entries, "plugins.entries") ?? {};
+            slots = requirePlainRecord(plugins.slots, "plugins.slots") ?? {};
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : String(error);
+            console.log(message);
+            console.log(
+              "Refusing to overwrite an invalid OpenClaw config structure.",
+            );
+            return;
+          }
           const currentMemorySlot =
             typeof slots.memory === "string" ? slots.memory : undefined;
 
@@ -180,25 +198,112 @@ export function registerCliCommands(
             }
           }
 
+          const existingEntry = entries[PLUGIN_ID];
+          const existingConfig =
+            isPlainRecord(existingEntry) && isPlainRecord(existingEntry.config)
+              ? existingEntry.config
+              : undefined;
+          const existingAutoRecall =
+            existingConfig && typeof existingConfig.autoRecall === "boolean"
+              ? existingConfig.autoRecall
+              : true;
+          const existingAutoCapture =
+            existingConfig && typeof existingConfig.autoCapture === "boolean"
+              ? existingConfig.autoCapture
+              : false;
+          const existingProject =
+            existingConfig && typeof existingConfig.project === "string"
+              ? existingConfig.project
+              : undefined;
+          const existingProjectStrategy =
+            existingConfig && existingConfig.projectStrategy === "config"
+              ? "config"
+              : existingConfig && existingConfig.projectStrategy === "none"
+                ? "none"
+                : existingProject
+                  ? "config"
+                  : "workspace";
+          const existingApiKey =
+            existingConfig && typeof existingConfig.apiKey === "string"
+              ? existingConfig.apiKey
+              : undefined;
+          const existingApiUrl =
+            existingConfig && typeof existingConfig.apiUrl === "string"
+              ? existingConfig.apiUrl
+              : undefined;
+
+          const apiKeyPrompt = existingApiKey
+            ? "MemContext API key (mc_..., leave blank to keep current): "
+            : "MemContext API key (mc_...): ";
+          const apiKeyInput = (await prompt(apiKeyPrompt, true)).trim();
+          const apiKey = apiKeyInput || existingApiKey;
+          if (!apiKey) {
+            console.log("No API key provided. Setup cancelled.");
+            return;
+          }
+
+          const apiUrlDefault = existingApiUrl || DEFAULT_API_URL;
+          const apiUrlInput = (
+            await prompt(`MemContext API URL [${apiUrlDefault}]: `)
+          ).trim();
+          const projectInput = (
+            await prompt(
+              "Project scope (optional; leave blank to keep current or use workspace, '-' clears fixed scope): ",
+            )
+          ).trim();
+          const autoCapturePrompt = existingAutoCapture
+            ? "Enable automatic memory capture after successful turns? [Y/n]: "
+            : "Enable automatic memory capture after successful turns? [y/N]: ";
+          const autoCapture = parseBooleanAnswer(
+            await prompt(autoCapturePrompt),
+            existingAutoCapture,
+          );
+
+          const projectConfig =
+            projectInput === "-"
+              ? { project: undefined, projectStrategy: "workspace" as const }
+              : projectInput
+                ? { project: projectInput, projectStrategy: "config" as const }
+                : existingConfig && existingProjectStrategy === "config"
+                  ? {
+                      project: existingProject,
+                      projectStrategy: existingProjectStrategy,
+                    }
+                  : existingConfig && existingProjectStrategy === "none"
+                    ? {
+                        project: undefined,
+                        projectStrategy: "none" as const,
+                      }
+                    : {
+                        project: undefined,
+                        projectStrategy: "workspace" as const,
+                      };
+
           entries[PLUGIN_ID] = {
             enabled: true,
             config: {
+              ...(existingConfig ?? {}),
               apiKey,
-              apiUrl: apiUrlInput || DEFAULT_API_URL,
-              ...(projectInput ? { project: projectInput } : {}),
+              apiUrl: apiUrlInput || apiUrlDefault,
+              autoRecall: existingAutoRecall,
+              autoCapture,
+              ...projectConfig,
             },
           };
           slots.memory = PLUGIN_ID;
 
-          config.plugins = {
+          openClawConfig.plugins = {
             ...plugins,
             entries,
             slots,
           };
 
-          writeOpenClawConfig(config);
+          writeOpenClawConfig(openClawConfig);
           console.log(`Saved configuration to ${getConfigPath()}`);
           console.log("Stored config file permissions as owner-only (0600).");
+          console.log(
+            `Auto-capture is ${autoCapture ? "enabled" : "disabled"}.`,
+          );
           console.log(
             "Tip: you can replace the saved apiKey with ${MEMCONTEXT_OPENCLAW_API_KEY} to avoid keeping the raw key in config.",
           );

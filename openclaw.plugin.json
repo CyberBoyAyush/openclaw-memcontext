@@ -1,8 +1,8 @@
 {
   "id": "openclaw-memcontext",
   "name": "MemContext",
-  "description": "Hosted long-term memory for OpenClaw backed by MemContext.",
-  "version": "0.1.0",
+  "description": "Hosted long-term memory for OpenClaw backed by MemContext.in.",
+  "version": "1.0.0",
   "kind": "memory",
   "skills": ["./skills"],
   "uiHints": {
